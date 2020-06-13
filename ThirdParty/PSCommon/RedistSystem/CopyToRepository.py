@@ -30,8 +30,7 @@ def find_package_number(findStr, text):
     for line in text:
         temp = re.search(findStr, line)
         if temp != None:
-            packageNumber = temp.group(1)
-            return packageNumber
+            return temp.group(1)
 
 def copy_files_to_repository(SourcePath,RepositoryPath, BuildDate, PackageVersion, Bits, ProjectName,
                              Major_version, Minor_version, Maintenance_version, Build_version):
@@ -53,8 +52,7 @@ def copy_zip_to_repository(SourcePath,RepositoryPath, BuildDate, PackageVersion,
 
 def open_package_file(path):
     files = open(path).readlines()
-    packageNumber = find_package_number("!define PACKAGE_VER\s+\"(\S+)\"", files)
-    return packageNumber
+    return find_package_number("!define PACKAGE_VER\s+\"(\S+)\"", files)
 
 if __name__ == "__main__":
     try:

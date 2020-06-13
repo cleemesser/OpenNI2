@@ -46,13 +46,13 @@ class Harvest:
                 self.glutSuffix = '64'
 
     def copySharedObject(self, sourceDir, name, targetDir):
-        if self.osName == 'Windows':
-            shutil.copy(os.path.join(sourceDir, name + '.dll'), targetDir)
-            shutil.copy(os.path.join(sourceDir, name + '.pdb'), targetDir)
+        if self.osName == 'Darwin':
+            shutil.copy(os.path.join(sourceDir, 'lib' + name + '.dylib'), targetDir)
         elif self.osName == 'Linux':
             shutil.copy(os.path.join(sourceDir, 'lib' + name + '.so'), targetDir)
-        elif self.osName == 'Darwin':
-            shutil.copy(os.path.join(sourceDir, 'lib' + name + '.dylib'), targetDir)
+        elif self.osName == 'Windows':
+            shutil.copy(os.path.join(sourceDir, name + '.dll'), targetDir)
+            shutil.copy(os.path.join(sourceDir, name + '.pdb'), targetDir)
         else:
             raise 'Unsupported platform!'
             
@@ -100,7 +100,7 @@ class Harvest:
     def copySample(self, samplesDir, name, isLibrary = False, isGL = False, isJava = False):
         if self.arch == 'Arm' and isGL:
             return
-            
+
         sampleTargetDir = os.path.join(samplesDir, name)
         sampleSourceDir = os.path.join(self.rootDir, 'Samples', name)
 
@@ -114,11 +114,11 @@ class Harvest:
                     if not os.path.exists(dst):
                         os.makedirs(dst)
                     shutil.copy(os.path.join(root, file), dst)
-                    
+
         # copy common header
-        if not isJava and not isLibrary:
+        if not (isJava or isLibrary):
             shutil.copy(os.path.join(self.rootDir, 'Samples', 'Common', 'OniSampleUtilities.h'), sampleTargetDir)
-            
+
         # copy GL headers
         if self.osName == 'Windows' and isGL:
             shutil.copytree(os.path.join(self.rootDir, 'ThirdParty', 'GL', 'GL'), os.path.join(sampleTargetDir, 'GL'))
@@ -128,7 +128,7 @@ class Harvest:
             shutil.copy(os.path.join(self.rootDir, 'ThirdParty', 'GL', 'glut64.lib'), sampleTargetDir)
             shutil.copy(os.path.join(self.rootDir, 'ThirdParty', 'GL', 'glut32.dll'), sampleTargetDir)
             shutil.copy(os.path.join(self.rootDir, 'ThirdParty', 'GL', 'glut64.dll'), sampleTargetDir)
-                    
+
         # and project file / makefile
         if self.osName == 'Windows':
             if isJava:
@@ -151,18 +151,18 @@ class Harvest:
                 buildFile.write(')\n')
                 buildFile.write(buildScript)
                 buildFile.close()
-                
+
             else:
                 shutil.copy(os.path.join(sampleSourceDir, name + '.vcxproj'), sampleTargetDir)
                 projFile = os.path.join(sampleTargetDir, name + '.vcxproj')
                 #ET.register_namespace('', 'http://schemas.microsoft.com/developer/msbuild/2003')
                 doc = xml.dom.minidom.parse(projFile)
-                
+
                 # remove OutDir and IntDir (make them default)
                 for propertyGroup in doc.getElementsByTagName("PropertyGroup"):
                     if len(propertyGroup.getElementsByTagName("OutDir")) > 0:
                         propertyGroup.parentNode.removeChild(propertyGroup)
-                
+
                 for group in doc.getElementsByTagName("ItemDefinitionGroup"):
                     condAttr = group.getAttribute('Condition')
                     if condAttr.find('x64') != -1:
@@ -171,7 +171,7 @@ class Harvest:
                     else: 
                         postfix = ''
                         glPostfix = '32'
-                        
+
                     incDirs = group.getElementsByTagName('ClCompile')[0].getElementsByTagName('AdditionalIncludeDirectories')[0]
                     val = incDirs.firstChild.data
 
@@ -181,7 +181,7 @@ class Harvest:
                     val = re.sub('..\\\\Common', r'.', val)
                     # fix OpenNI include dir
                     val = re.sub('..\\\\..\\\\Include', '$(OPENNI2_INCLUDE' + postfix + ')', val)
-                    
+
                     incDirs.firstChild.data = val
 
                     # fix additional library directories
@@ -189,23 +189,23 @@ class Harvest:
                     val = libDirs.firstChild.data
                     val = re.sub('\$\(OutDir\)', '$(OutDir);$(OPENNI2_LIB' + postfix + ')', val)
                     libDirs.firstChild.data = val
-                    
+
                     # add post-build event to copy OpenNI redist
                     post = doc.createElement('PostBuildEvent')
                     cmd = 'xcopy /D /S /F /Y "$(OPENNI2_REDIST' + postfix + ')\*" "$(OutDir)"\n'
                     if isGL:
                         cmd += 'xcopy /D /F /Y "$(ProjectDir)\\glut' + glPostfix + '.dll" "$(OutDir)"\n'
-                        
+
                     cmdNode = doc.createElement('Command')
                     cmdNode.appendChild(doc.createTextNode(cmd))
                     post.appendChild(cmdNode)
                     group.appendChild(post)
-                
+
                 proj = open(projFile, 'w')
                 proj.write(doc.toxml())
                 proj.close()
-                
-        elif self.osName == 'Linux' or self.osName == 'Darwin':
+
+        elif self.osName in ['Linux', 'Darwin']:
             shutil.copy(os.path.join(sampleSourceDir, 'Makefile'), sampleTargetDir)
             shutil.copy(os.path.join(rootDir, 'ThirdParty', 'PSCommon', 'BuildSystem', 'CommonDefs.mak'), sampleTargetDir)
             shutil.copy(os.path.join(rootDir, 'ThirdParty', 'PSCommon', 'BuildSystem', 'CommonTargets.mak'), sampleTargetDir)
@@ -216,13 +216,13 @@ class Harvest:
                 shutil.copy(os.path.join(rootDir, 'ThirdParty', 'PSCommon', 'BuildSystem', 'CommonJavaMakefile'), sampleTargetDir)
             else:
                 shutil.copy(os.path.join(rootDir, 'ThirdParty', 'PSCommon', 'BuildSystem', 'CommonCppMakefile'), sampleTargetDir)
-                
+
             # fix common makefiles path
             self.regxReplace('../../ThirdParty/PSCommon/BuildSystem/', '', os.path.join(sampleTargetDir, 'Makefile'))
-            
+
             # fix BIN dir
             self.regxReplace('BIN_DIR = ../../Bin', 'BIN_DIR = Bin', os.path.join(sampleTargetDir, 'Makefile'))
-            
+
             # fix include dirs and copy openni_redist
             add = r'''
 ifndef OPENNI2_INCLUDE

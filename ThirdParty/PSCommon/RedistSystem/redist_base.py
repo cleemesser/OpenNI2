@@ -177,9 +177,9 @@ class RedistBase(object):
         if len(sys.argv) not in [4,5]:
             print ("Args: <Doxygen:y/n> <BuildTarget:32/64> <FullRebuild:y/n> [<VCVersion:9/10>]")
             exit(1)
-        if sys.argv[1] == 'y' or sys.argv[1] == 'Yes':
+        if sys.argv[1] in ['y', 'Yes']:
             self.Make_Doxy=1
-        elif sys.argv[1] == 'n' or sys.argv[1] == 'No':
+        elif sys.argv[1] in ['n', 'No']:
             self.Make_Doxy=0
         else:
             print("Args: <Doxygen:y/n> <BuildTarget:32/64> <FullRebuild:y/n>")
@@ -195,9 +195,9 @@ class RedistBase(object):
             print("BuildTarget param must be 32 or 64!")
             exit(1)
 
-        if sys.argv[3] == 'y' or sys.argv[3] == 'Yes':
+        if sys.argv[3] in ['y', 'Yes']:
             self.vc_build_type = "/Rebuild"
-        elif sys.argv[3] == 'n' or sys.argv[3] == 'No':
+        elif sys.argv[3] in ['n', 'No']:
             self.vc_build_type = "/Build"
         else:
             print("Args: <Doxygen:y/n> <BuildTarget:32/64> <FullRebuild:y/n>")
@@ -206,15 +206,13 @@ class RedistBase(object):
 
         if self.project_is_2010:
             self.VC_version = 10
-            if len(sys.argv) > 4:
-                if sys.argv[4] == '9':
-                    print("Project does not support VS2008!")
-                    exit(1)
+            if len(sys.argv) > 4 and sys.argv[4] == '9':
+                print("Project does not support VS2008!")
+                exit(1)
         else:
             self.VC_version = 9
-            if len(sys.argv) > 4:
-                if sys.argv[4] == '10':
-                    self.VC_version = 10
+            if len(sys.argv) > 4 and sys.argv[4] == '10':
+                self.VC_version = 10
 
     def init_vs_vars(self):
         """
@@ -426,7 +424,7 @@ class RedistBase(object):
 
     def find_samples(self):
         # returns a dictionary of all samples
-        all_samples = dict()
+        all_samples = {}
         os.chdir(self.WORK_DIR)
         samples_list = os.listdir(os.path.join(self.BUILD_DIR,"Samples"))
         if '.svn' in samples_list:
@@ -487,7 +485,7 @@ class RedistBase(object):
                             sample_data.project_guid = ProjGUIDtmp.group(1)
 
                 prj.close()
-            
+
             elif os.path.exists(cs_proj_name):
                 # a .NET project
                 sample_data.project_file = cs_proj_name
@@ -541,7 +539,7 @@ class RedistBase(object):
 
     def get_samples(self):
         # returns a dictionary of all samples
-        if self.all_samples == None:
+        if self.all_samples is None:
             self.all_samples = self.find_samples()
 
         return self.all_samples
@@ -585,7 +583,7 @@ class RedistBase(object):
             OUTFILESLN2010 = open("Redist\\Samples\\Build\\All_2010.sln",'w')
         else:
             OUTFILESLN2010 = open("Redist\\Samples\\Build\\All.sln",'w')
-        
+
         OUTFILESLN2010.write("Microsoft Visual Studio Solution File, Format Version 11.00\n")
         OUTFILESLN2010.write("# Visual Studio 2010\n")
 
@@ -630,15 +628,14 @@ class RedistBase(object):
                                             sample.project_name + "\", \"" + prj2010_path + "\", \"" + sample.project_guid + "\"\n")
 
                 # write down dependencies
-                if len(sample.dependencies) > 0:
-                    if not self.project_is_2010:
-                        OUTFILESLN2008.write("\tProjectSection(ProjectDependencies) = postProject\n")
-                        for depend in sample.dependencies:
-                            OUTFILESLN2008.write("\t\t" + all_samples[depend].project_guid + " = " + all_samples[depend].project_guid + "\n")
-                        OUTFILESLN2008.write("\tEndProjectSection\n")
-                        if self.write_2010_sample_dependency == True:
-                            write_dependencides(OUTFILESLN2010,all_samples,sample)
-                            
+                if len(sample.dependencies) > 0 and not self.project_is_2010:
+                    OUTFILESLN2008.write("\tProjectSection(ProjectDependencies) = postProject\n")
+                    for depend in sample.dependencies:
+                        OUTFILESLN2008.write("\t\t" + all_samples[depend].project_guid + " = " + all_samples[depend].project_guid + "\n")
+                    OUTFILESLN2008.write("\tEndProjectSection\n")
+                    if self.write_2010_sample_dependency == True:
+                        write_dependencides(OUTFILESLN2010,all_samples,sample)
+
                 if not self.project_is_2010:
                     OUTFILESLN2008.write("EndProject\n")
                 OUTFILESLN2010.write("EndProject\n")
@@ -777,14 +774,14 @@ class RedistBase(object):
 
     def check_upgrade_install_sln(self):
         """preconsdition: CWD is where wix-variables-file is stored"""
-        up_wix_file = os.path.join('..\\..\\CreateRedist',self.output_dir,"Upgrade%sWIX.txt"%(self.redist_internal_name))
         if self.VS_NEED_UPGRADE == 1:
+            up_wix_file = os.path.join('..\\..\\CreateRedist',self.output_dir,"Upgrade%sWIX.txt"%(self.redist_internal_name))
             subprocess.call("\"" + self.VS_INST_DIR +  \
             "devenv\" %s.sln /upgrade /out "%(self.redist_internal_name) + up_wix_file, close_fds=True)
 
     def wix_inst_primitive_check(self):
         wixPath = os.environ.get('WIX')
-        if wixPath == None:
+        if wixPath is None:
             print('*** no WIX env. var. defined ! use set WIX=C:\Program Files\Windows Installer XML v3.5\ or similar to set the path ***')
             print('make installer is SERIOUSLY expected to fail')
             self.logger.info('It seems that WIX is not installed and therefore teh installer cannot be built.')
